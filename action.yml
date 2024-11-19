@@ -1,0 +1,75 @@
+name: 'Generate Swarm Stack Templates'
+description: 'Automatically generate a release branch for any Docker Swarm stack config files'
+inputs:
+  branch_name:
+    description: 'Branch name to which the Docker Swarm templates will be published.'
+    required: false
+    default: 'release/latest'
+  templates_path:
+    description: 'The directory in your git repository that contains the Docker Swarm templates'
+    required: false
+    default: 'docker-swarm-templates'
+  github_token:
+    description: 'A GitHub token with the permissions to push back to this repository'
+    required: true
+    default: ${{ github.token }}
+runs:
+  using: 'composite'
+  steps:
+    - name: Build
+      shell: bash
+      run: |
+        echo "*** Creating build paths ***"
+        echo
+        export TEMPLATES_PATH=${{ inputs.templates_path }}
+        export BRANCH_NAME=${{ inputs.branch_name }}
+        export PATH_TO_BUILD=${GITHUB_WORKSPACE:?}/${TEMPLATES_PATH:?}/build
+        export PATH_TO_PUBLISH=${GITHUB_WORKSPACE:?}/${TEMPLATES_PATH:?}/dist
+        mkdir -p \
+          "${PATH_TO_BUILD:?}" \
+          "${PATH_TO_PUBLISH:?}"
+        rm -rf "${PATH_TO_BUILD:?}"/*
+
+        echo "*** Generating Swarm templates ***"
+        echo
+        # Run script to build templates
+        "${{ github.action_path }}"/build-compose.sh "${GITHUB_WORKSPACE:?}/${TEMPLATES_PATH:?}"
+
+        echo "*** Publishing path ***"
+        echo
+        cd "${PATH_TO_PUBLISH:?}"
+
+        # Init git repo
+        git init
+
+        # Add the remote upstream
+        git remote add upstream "https://${{ inputs.github_token }}@github.com/${GITHUB_REPOSITORY}.git"
+
+        # Checkout new branch
+        git checkout -b "${BRANCH_NAME:?}"
+
+        # Fetch remote (if it exists)
+        git fetch -u upstream "${BRANCH_NAME:?}:${BRANCH_NAME:?}" || true
+
+        # Commit to branch
+        git config --local user.name "GitHub Actions"
+        git config --local user.email "41898282+github-actions[bot]@users.noreply.github.com"
+        git add -A
+        git commit -m "Update repo to output generated at ${{ github.sha }}" || true
+
+        # Update tags
+        if [ -f "${PATH_TO_BUILD%/}"/tags.txt ]; then
+          while read line; do
+            # Skip empty lines
+            if [ "X${line:-}" = "X" ]; then
+              continue
+            fi
+            # Force tag the current HEAD with the line as the tag
+            git tag -f "${BRANCH_NAME:?}/${line:?}"
+            echo "Applied tag '${BRANCH_NAME:?}/${line:?}'"
+          done < "${PATH_TO_BUILD%/}"/tags.txt
+        fi
+
+        # Publish
+        git push -f --tags upstream "${BRANCH_NAME:?}" || true
+        echo
