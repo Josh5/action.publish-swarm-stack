@@ -5,7 +5,7 @@
 # File Created: Wednesday, 10th April 2024 7:49:13 am
 # Author: Josh.5 (jsunnex@gmail.com)
 # -----
-# Last Modified: Tuesday, 19th November 2024 5:08:13 pm
+# Last Modified: Wednesday, 20th November 2024 12:36:59 pm
 # Modified By: Josh5 (jsunnex@gmail.com)
 ###
 
@@ -37,7 +37,7 @@ get_latest_tag_from_docker_hub() {
         -H "Accept: application/vnd.docker.distribution.manifest.list.v2+json" \
         "https://registry-1.docker.io/v2/${image_name_encoded:?}/manifests/${image_tag}")
     # Check if the response contains a 'manifests' array
-    if echo "${manifest_digest:?}" | jq -e '.manifests' > /dev/null; then
+    if echo "${manifest_digest:?}" | jq -e '.manifests' >/dev/null; then
         # The image supports multi-arch (has a 'manifests' array)
         # Fetch the manifest list for the specified tag and extract the Docker-Content-Digest header.
         # This requires specifying the Accept header for the manifest list format.
@@ -84,6 +84,7 @@ process_template() {
     cp -f "${templates_dir:?}/${template_name}" "${dist_path:?}/${template_name}"
     # Define your docker-compose file location
     local DOCKER_COMPOSE_FILE="${dist_path:?}/${template_name}"
+    local ENV_EXAMPLE_FILE="${DOCKER_COMPOSE_FILE%.y*ml}.env.example"
 
     # Read each line in the docker-compose file
     while IFS= read -r line; do
@@ -94,7 +95,7 @@ process_template() {
                 local image_name=$(echo $image_name_with_tag | cut -d':' -f1)
                 local image_tag=$(echo $image_name_with_tag | cut -d':' -f2)
 
-                echo "  - Fetching SHA for image '${image_name}:${image_tag}'"
+                echo "--> Fetching SHA for image '${image_name}:${image_tag}'"
 
                 if [[ $image_name == ghcr.io/* ]]; then
                     local new_image_tag="$(get_latest_tag_from_ghcr "$image_name" "$image_tag")"
@@ -112,13 +113,21 @@ process_template() {
             else
                 # Extract the image name
                 image_name=$(echo $line | sed -n 's/.*image: \(.*\)/\1/p')
-                echo "  - Ignoring '${image_name:?}' as it is not configured to use 'latest' or '#>convert_sha256'"
+                echo "--> Ignoring '${image_name:?}' as it is not configured to use 'latest' or '#>convert_sha256'"
             fi
         elif [[ $line == *"# RELEASE:"* ]]; then
             local tag_release=$(echo $line | sed -n 's/.*RELEASE: \(.*\)/\1/p' | awk '{print $1}')
-            echo ${tag_release:?} >> "${build_path:?}"/tags.txt
+            echo ${tag_release:?} >>"${build_path:?}"/tags.txt
         fi
     done <"${DOCKER_COMPOSE_FILE:?}"
+
+    # Extract configuration block (if one exists)
+    if grep -q "# <config_start>" "${DOCKER_COMPOSE_FILE:?}"; then
+        sed -n '/# <config_start>/,/# <config_end>/p' "${DOCKER_COMPOSE_FILE:?}" | sed '/# <config_start>/d;/# <config_end>/d;s/^#   //' >"${ENV_EXAMPLE_FILE:?}"
+        echo "--> Configuration example extracted to: ${ENV_EXAMPLE_FILE:?}"
+    else
+        echo "--> No configuration block found in ${DOCKER_COMPOSE_FILE:?}. No example env file is created."
+    fi
 }
 
 path_arg="${@:?}"
