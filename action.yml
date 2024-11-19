@@ -34,7 +34,7 @@ runs:
         echo
         # Copy README
         if [ -f "${GITHUB_WORKSPACE:?}/${TEMPLATES_PATH:?}/README.md" ]; then
-          cp -fv "${GITHUB_WORKSPACE:?}/${TEMPLATES_PATH:?}/README.md" > "${PATH_TO_PUBLISH:?}/README.md"
+          cp -fv "${GITHUB_WORKSPACE:?}/${TEMPLATES_PATH:?}/README.md" "${PATH_TO_PUBLISH:?}/README.md"
           if [ -d "${GITHUB_WORKSPACE:?}/${TEMPLATES_PATH:?}/docs" ]; then
             cp -rfv "${GITHUB_WORKSPACE:?}/${TEMPLATES_PATH:?}/docs" "${PATH_TO_PUBLISH:?}"/
           fi
