@@ -6,7 +6,7 @@ inputs:
     required: false
     default: 'release/latest'
   templates_path:
-    description: 'The directory in your git repository that contains the Docker Swarm templates'
+    description: 'The directory in your git repository that contains the Docker Swarm templates.'
     required: false
     default: 'docker-swarm-templates'
   github_token:
@@ -30,6 +30,21 @@ runs:
           "${PATH_TO_PUBLISH:?}"
         rm -rf "${PATH_TO_BUILD:?}"/*
 
+        echo "*** Generating documentation ***"
+        echo
+        # Copy README
+        if [ -f "${GITHUB_WORKSPACE:?}/${TEMPLATES_PATH:?}/README.md" ]; then
+          cp -fv "${GITHUB_WORKSPACE:?}/${TEMPLATES_PATH:?}/README.md" > "${PATH_TO_PUBLISH:?}/README.md"
+          if [ -d "${GITHUB_WORKSPACE:?}/${TEMPLATES_PATH:?}/docs" ]; then
+            cp -rfv "${GITHUB_WORKSPACE:?}/${TEMPLATES_PATH:?}/docs" "${PATH_TO_PUBLISH:?}"/
+          fi
+        else
+          cp -fv "${{ github.action_path }}"/docs_template/README.md "${PATH_TO_PUBLISH:?}/README.md"
+        fi
+        # Modify README
+        sed -i "s|<branch>|${BRANCH_NAME:?}|g" "${PATH_TO_PUBLISH:?}/README.md"
+        sed -i "s|<url>|${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}|g" "${PATH_TO_PUBLISH:?}/README.md"
+        
         echo "*** Generating Swarm templates ***"
         echo
         # Run script to build templates
