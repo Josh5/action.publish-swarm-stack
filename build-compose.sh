@@ -5,7 +5,7 @@
 # File Created: Wednesday, 10th April 2024 7:49:13 am
 # Author: Josh.5 (jsunnex@gmail.com)
 # -----
-# Last Modified: Wednesday, 20th November 2024 12:36:59 pm
+# Last Modified: Monday, 6th January 2025 3:32:59 pm
 # Modified By: Josh5 (jsunnex@gmail.com)
 ###
 
@@ -73,6 +73,22 @@ get_latest_tag_from_ghcr() {
     echo "${multi_platform_index_digest:-}"
 }
 
+# Function to get the latest image SHA from Quay.io
+get_latest_tag_from_quay() {
+    local image_name="$1"
+    local image_tag="$2"
+    # Encode the image name for API compatibility
+    local image_name_encoded=$(echo "${image_name#quay.io/}" | sed 's/\//%2F/g')
+    # Fetch the manifest list for the specified tag and extract the Docker-Content-Digest header.
+    local accept_header="application/vnd.oci.image.index.v1+json, application/vnd.docker.distribution.manifest.list.v2+json"
+    # Fetch the manifest list for the specified tag and extract the Docker-Content-Digest header.
+    local manifest_digest_header=$(curl -s -I -H "Accept: ${accept_header:?}" "https://quay.io/v2/${image_name_encoded:?}/manifests/${image_tag}")
+    # Extract the Docker-Content-Digest value
+    local multi_platform_index_digest=$(echo "${manifest_digest_header}" | grep -i 'Docker-Content-Digest' | awk '{print $2}' | tr -d $'\r')
+    # Return this extracted value
+    echo "${multi_platform_index_digest:-}"
+}
+
 process_template() {
     local template_name="$(basename "${1}")"
     local templates_dir="$(dirname "${1}")"
@@ -99,6 +115,8 @@ process_template() {
 
                 if [[ $image_name == ghcr.io/* ]]; then
                     local new_image_tag="$(get_latest_tag_from_ghcr "$image_name" "$image_tag")"
+                elif [[ $image_name == quay.io/* ]]; then
+                    local new_image_tag="$(get_latest_tag_from_quay "$image_name" "$image_tag")"
                 else
                     local new_image_tag="$(get_latest_tag_from_docker_hub "$image_name" "$image_tag")"
                 fi
