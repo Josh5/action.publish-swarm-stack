@@ -44,9 +44,19 @@ The README.md will be customised. Add placeholders listed below to have the repl
 
 Generate the a release branch `release/latest` with the latest docker-compose YAML templates that are in the /docker-swarm-templates directory of your repo:
 ```yaml
-    - uses: Josh5/action.publish-swarm-stack@master
-      with:
-        github_token: ${{ secrets.GH_TOKEN }}
-        templates_path: docker-swarm-templates
-        branch_name: release/latest
+  build-swarm-stack-templates:
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/master'
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Publish Swarm Template
+        uses: Josh5/action.publish-swarm-stack@master
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          templates_path: docker-swarm-templates
+          branch_name: release/latest
 ```

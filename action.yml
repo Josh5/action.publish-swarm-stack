@@ -58,7 +58,7 @@ runs:
         git init
 
         # Add the remote upstream
-        git remote add upstream "https://${{ inputs.github_token }}@github.com/${GITHUB_REPOSITORY}.git"
+        git remote add upstream "https://x-access-token:${{ inputs.github_token }}@github.com/${GITHUB_REPOSITORY}.git"
 
         # Fetch remote (if it exists)
         git fetch upstream
