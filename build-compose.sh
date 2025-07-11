@@ -5,8 +5,8 @@
 # File Created: Wednesday, 10th April 2024 7:49:13 am
 # Author: Josh.5 (jsunnex@gmail.com)
 # -----
-# Last Modified: Monday, 6th January 2025 3:32:59 pm
-# Modified By: Josh5 (jsunnex@gmail.com)
+# Last Modified: Friday, 11th July 2025 2:01:53 pm
+# Modified By: Josh.5 (jsunnex@gmail.com)
 ###
 
 set -euo pipefail
@@ -136,6 +136,15 @@ process_template() {
         elif [[ $line == *"# RELEASE:"* ]]; then
             local tag_release=$(echo $line | sed -n 's/.*RELEASE: \(.*\)/\1/p' | awk '{print $1}')
             echo ${tag_release:?} >>"${build_path:?}"/tags.txt
+        elif [[ $line == *"<GIT_COMMIT_SHORT_SHA>"* ]]; then
+            if [[ -n "${GITHUB_SHA:-}" ]]; then
+                short_sha="${GITHUB_SHA:0:7}"
+                echo "--> Replacing <GIT_COMMIT_SHORT_SHA> with ${short_sha}"
+                sed -i "s|<GIT_COMMIT_SHORT_SHA>|${short_sha}|g" "${DOCKER_COMPOSE_FILE}"
+            else
+                echo "--> GITHUB_SHA not set, removing placeholder line"
+                sed -i "/<GIT_COMMIT_SHORT_SHA>/d" "${DOCKER_COMPOSE_FILE}"
+            fi
         fi
     done <"${DOCKER_COMPOSE_FILE:?}"
 
