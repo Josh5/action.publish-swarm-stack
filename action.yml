@@ -49,6 +49,7 @@ runs:
         echo
         # Run script to build templates
         "${{ github.action_path }}"/build-compose.sh "${GITHUB_WORKSPACE:?}/${TEMPLATES_PATH:?}"
+        echo ".env" >> "${PATH_TO_PUBLISH:?}/.gitignore"
 
         echo "*** Publishing path ***"
         echo
